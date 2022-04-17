@@ -32,6 +32,12 @@ chmod +x rem.sh
 ./rem.sh
 ```
 
+## Example
+```bash
+# File must already exist
+./rem file.txt
+```
+
 ### Mini FAQ
 Q. Will there be any actual releases for this project or a project website?
 

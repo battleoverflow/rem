@@ -18,6 +18,5 @@ else
     echo "Directory $dir already exists"
 fi
 
-
 # Moves binary into the proper directory
-sudo mv rem $dir
+sudo mv builds/rem $dir
