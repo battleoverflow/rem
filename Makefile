@@ -1,2 +1,2 @@
 rem: src/rem.c
-	$(CC) src/rem.c -o rem -Wall -Wextra -pedantic -std=c99
+	$(CC) src/rem.c -o builds/rem -Wall -Wextra -pedantic -std=c99
