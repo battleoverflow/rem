@@ -1,4 +1,4 @@
-# Rem
+# Rem (Really Epic & Makeable) 
 ###### *Yes, named after THAT Rem*
 
 REM is a terminal code editor created to improve my C knowledge and have something I can use that isn't Vim or Nano (or the many other terminal editors). My goal was to create a simple terminal editor, useful for beginners. At the moment, you can open a file, edit it, and save the file on disk.
