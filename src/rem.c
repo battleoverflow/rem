@@ -1,7 +1,7 @@
 /***************************************************/
 /*  File: rem.c                                    */
 /*  Author: Hifumi1337                             */
-/*  Version: 0.0.23                                */
+/*  Version: 0.0.25                                */
 /*  Project: https://github.com/Hifumi1337/rem     */
 /***************************************************/
 
@@ -23,7 +23,7 @@
 #include <unistd.h>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
-#define VERSION "0.0.23"
+#define VERSION "0.0.25"
 #define TAB_STOP 4
 #define QUIT_TIMES 1
 
@@ -66,6 +66,8 @@ struct editorConfig {
 struct editorConfig EC;
 
 void editorSetStatusMessage(const char *fmt, ...);
+void editorRefreshScreen();
+void *editorPrompt(char *prompt);
 
 // Destroys processes once they're complete or enter an error state
 void destroy(const char *e) {
@@ -254,21 +256,22 @@ void editorUpdateRow(erow *row) {
     row->rsize = eur;
 }
 
-void editorAppendRow(char *s, size_t len) {
+void editorInsertRow(int at, char *s, size_t len) {
+    if (at < 0 || at > EC.numrows) { return; }
+    
     EC.row = realloc(EC.row, sizeof(erow) * (EC.numrows + 1));
+    memmove(&EC.row[at + 1], &EC.row[at], sizeof(erow) * (EC.numrows - at));
 
-    int ll = EC.numrows;
-
-    EC.row[ll].size = len;
-    EC.row[ll].chars = malloc(len + 1);
+    EC.row[at].size = len;
+    EC.row[at].chars = malloc(len + 1);
     
-    memcpy(EC.row[ll].chars, s, len);
+    memcpy(EC.row[at].chars, s, len);
     
-    EC.row[ll].chars[len] = '\0';
-    EC.row[ll].rsize = 0;
-    EC.row[ll].render = NULL;
+    EC.row[at].chars[len] = '\0';
+    EC.row[at].rsize = 0;
+    EC.row[at].render = NULL;
 
-    editorUpdateRow(&EC.row[ll]);
+    editorUpdateRow(&EC.row[at]);
 
     EC.numrows++;
     EC.dirty++;
@@ -312,6 +315,22 @@ void editorRowAppendStr(erow *row, char *s, size_t len) {
     EC.dirty++;
 }
 
+void editorInsertNewLine() {
+    if (EC.xpos == 0) {
+        editorInsertRow(EC.ypos, "", 0);
+    } else {
+        erow *row = &EC.row[EC.ypos];
+        editorInsertRow(EC.ypos + 1, &row->chars[EC.xpos], row->size - EC.xpos);
+        row = &EC.row[EC.ypos];
+        row->size = EC.xpos;
+        row->chars[row->size] = '\0';
+        editorUpdateRow(row);
+    }
+
+    EC.ypos++;
+    EC.xpos = 0;
+}
+
 void editorRowDelChar(erow *row, int at) {
     if (at < 0 || at >= row->size) { return; }
 
@@ -324,7 +343,7 @@ void editorRowDelChar(erow *row, int at) {
 
 void editorInsertChar(int c) {
     if (EC.ypos == EC.numrows) {
-        editorAppendRow("", 0);
+        editorInsertRow(EC.numrows, "", 0);
     }
 
     editorRowInsertChar(&EC.row[EC.ypos], EC.xpos, c);
@@ -386,11 +405,12 @@ void editorOpen(char *filename) {
     ssize_t line_len;
 
     while ((line_len = getline(&line, &linecap, filepath)) != -1) {
-        while (line_len > 0 && (line[line_len - 1] == '\n' || line[line_len - 1] == '\r')) {
+        while (line_len > 0 && (line[line_len - 1] == '\n' ||
+                                line[line_len - 1] == '\r')) {
             line_len--;
         }
 
-        editorAppendRow(line, line_len);
+        editorInsertRow(EC.numrows, line, line_len);
     }
 
     free(line);
@@ -399,7 +419,15 @@ void editorOpen(char *filename) {
 }
 
 void editorSave() {
-    if (EC.filename == NULL) { return; } // Checks if the file is a new file. Need to prompt user for a filename instead.
+    // Checks if the file is a new file. Prompts for a new filename.
+    if (EC.filename == NULL) {
+        EC.filename = editorPrompt("Save file as: %s (ESC to cancel)");
+
+        if (EC.filename == NULL) {
+            editorSetStatusMessage("Save aborted");
+            return;
+        }
+    }
 
     // If the file doesn't exist we do the following:
     int len;
@@ -596,6 +624,45 @@ void editorSetStatusMessage(const char *fmt, ...) {
     EC.statusmsg_time = time(NULL);
 }
 
+// Prompt for status bar (saving files)
+void *editorPrompt(char *prompt) {
+    size_t bufsize = 128;
+    char *buf = malloc(bufsize);
+
+    size_t buflen = 0;
+    buf[0] = '\0';
+
+    while (1) {
+        editorSetStatusMessage(prompt, buf);
+        editorRefreshScreen();
+
+        int k = editorReadKey();
+
+        if (k == DEL_KEY || k == CTRL_KEY('h') || k == BACKSPACE) {
+            if (buflen != 0) {
+                buf[--buflen] = '\0';
+            }
+        } else if (k == '\x1b') {
+            editorSetStatusMessage("");
+            free(buf);
+            return NULL;
+        }  else if (k == '\r') {
+            if (buflen != 0) {
+                editorSetStatusMessage("");
+                return buf;
+            }
+        } else if (!iscntrl(k) && k < 128) {
+            if (buflen == bufsize -1) {
+                bufsize += 2;
+                buf = realloc(buf, bufsize);
+            }
+
+            buf[buflen++] = k;
+            buf[buflen] = '\0';
+        }
+    }
+}
+
 void editorMoveCursor(int key) {
     erow *row = (EC.ypos >= EC.numrows) ? NULL : &EC.row[EC.ypos];
 
@@ -642,8 +709,8 @@ void editorProcessKey() {
     int i = editorReadKey();
 
     switch (i) {
-        case '\r':
-            // More here later
+        case '\r': // Enter key
+            editorInsertNewLine();
             break;
         case CTRL_KEY('q'): // Exits the editor
             if (EC.dirty && quit_times > 0) {

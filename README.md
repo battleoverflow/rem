@@ -1,11 +1,11 @@
 # Rem (Really Epic & Makeable) 
-###### *Yes, named after THAT Rem*
 
-REM is a terminal code editor created to improve my C knowledge and have something I can use that isn't Vim or Nano (or the many other terminal editors). My goal was to create a simple terminal editor, useful for beginners. At the moment, you can open a file, edit it, and save the file on disk.
+REM is a terminal code editor I created as an alternative to Vim or Nano (or the many other terminal editors). I will eventually add more features and improve the codebase, but for now, it works.
 
 I have a future feature list to eventually add syntax highlighting, a search feature, better code quality, ability to create files, and overall improvements to the structure.
 
 ## Usage
+
 ```bash
 make
 ```
@@ -24,7 +24,6 @@ Once the project is compiled, run the following command to set an alias on your 
 alias rem="/opt/rem/rem"
 ```
 or you can just run `rem.sh` to run the editor, if you don't want to go through the trouble of setting up a new alias or variable.
-
 ```bash
 # Only required if the file doesn't have executable permissions
 chmod +x rem.sh
