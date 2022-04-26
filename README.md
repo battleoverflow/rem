@@ -1,16 +1,22 @@
 # Rem (Really Epic & Makeable) 
 
-REM is a terminal code editor I created as an alternative to Vim or Nano (or the many other terminal editors). I will eventually add more features and improve the codebase, but for now, it works.
-
-I have a future feature list to eventually add syntax highlighting, a search feature, better code quality, ability to create files, and overall improvements to the structure.
+Rem is a terminal code editor I created as an alternative to Vim or Nano (or the many other terminal editors). I will eventually add more features and improve the codebase, but for now, it works pretty well.
 
 ## Usage
 
+How to create an executable:
 ```bash
 make
 ```
 
-If you don't want to get your hands dirty with a bunch of commands, there's an installation script called `install.sh`. Here's how to use it:
+Available Commands:
+```
+Ctrl-X (^X) | Exits the Rem editor
+Ctrl-Q (^Q) | Search (Query) for specific characters or strings
+Ctrl-S (^S) | Save file contents
+```
+
+If you don't want to get your hands dirty with a bunch of commands, there's an installation script called `install.sh`:
 ```bash
 # Only required if the file doesn't have executable permissions
 chmod +x install.sh
@@ -33,11 +39,10 @@ chmod +x rem.sh
 
 ## Example
 ```bash
-# File must already exist
-./rem file.txt
+# Creates a file called file.py. You can also open existing files the same way!
+./rem file.py
 ```
 
 ### Mini FAQ
-Q. Will there be any actual releases for this project or a project website?
-
-A. Yes! I have a domain ready for the website, but need to build it. As for the release, a "real" release will be created once I am happy with the project.
+> Q. Will there be any actual releases for this project or a project website?
+>> A. Yes! I have a domain ready for the website, but need to build it. As for the release, a "real" release will be created once I am happy with the project.

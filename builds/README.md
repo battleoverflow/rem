@@ -1,1 +1,1 @@
-This directory will contain the binary for Rem when running `make`.
+This directory will contain the executable for Rem when running `make`
