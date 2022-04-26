@@ -1,7 +1,7 @@
 /***************************************************/
 /*  File: rem.c                                    */
 /*  Author: Hifumi1337                             */
-/*  Version: 0.0.25                                */
+/*  Version: 0.0.28                                */
 /*  Project: https://github.com/Hifumi1337/rem     */
 /***************************************************/
 
@@ -23,7 +23,7 @@
 #include <unistd.h>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
-#define VERSION "0.0.25"
+#define VERSION "0.0.28"
 #define TAB_STOP 4
 #define QUIT_TIMES 1
 
@@ -67,7 +67,7 @@ struct editorConfig EC;
 
 void editorSetStatusMessage(const char *fmt, ...);
 void editorRefreshScreen();
-void *editorPrompt(char *prompt);
+char *editorPrompt(char *prompt, void (*callback)(char *, int));
 
 // Destroys processes once they're complete or enter an error state
 void destroy(const char *e) {
@@ -223,6 +223,24 @@ int editorRowXposToRx(erow *row, int xpos) {
         rx++;
     }
     return rx;
+}
+
+int editorRowRxToXpos(erow *row, int rx) {
+    int cur_rx = 0;
+    int xpos;
+
+    for (xpos = 0; xpos < row->size; xpos++) {
+        if (row->chars[xpos] == '\t') {
+            cur_rx += (TAB_STOP - 1) - (cur_rx % TAB_STOP);
+        }
+
+        cur_rx++;
+
+        if (cur_rx > rx) { return xpos; }
+    }
+
+    // Handles any out of range returns
+    return xpos;
 }
 
 void editorUpdateRow(erow *row) {
@@ -421,7 +439,7 @@ void editorOpen(char *filename) {
 void editorSave() {
     // Checks if the file is a new file. Prompts for a new filename.
     if (EC.filename == NULL) {
-        EC.filename = editorPrompt("Save file as: %s (ESC to cancel)");
+        EC.filename = editorPrompt("Save file as (ESC to cancel): %s"), NULL;
 
         if (EC.filename == NULL) {
             editorSetStatusMessage("Save aborted");
@@ -451,6 +469,36 @@ void editorSave() {
 
     free(buf); // Frees memory
     editorSetStatusMessage("[ERROR] Unable to save file: %s", strerror(errno)); // Notifies of an error is unable to save file
+}
+
+// Incremental search function
+void editorSearchCallback(char *query, int key) {
+    if (key == '\r' || key == '\x1b') { return; }
+
+    int q;
+
+    for (q = 0; q < EC.numrows; q++) {
+        erow *row = &EC.row[q];
+
+        char *match = strstr(row->render, query);
+
+        if (match) {
+            EC.ypos = q;
+            EC.xpos = editorRowRxToXpos(row, match - row->render);
+            EC.xpos = match - row->render;
+            EC.rowoff = EC.numrows;
+            break;
+        }
+    }
+}
+
+// Searches each row for query
+void editorSearch() {
+    char *query = editorPrompt("Query (ESC to cancel): %s", editorSearchCallback);
+
+    if (query) {
+        free(query);
+    }
 }
 
 struct abuf {
@@ -625,7 +673,7 @@ void editorSetStatusMessage(const char *fmt, ...) {
 }
 
 // Prompt for status bar (saving files)
-void *editorPrompt(char *prompt) {
+void *editorPrompt(char *prompt, void (*callback)(char *, int)) {
     size_t bufsize = 128;
     char *buf = malloc(bufsize);
 
@@ -644,11 +692,13 @@ void *editorPrompt(char *prompt) {
             }
         } else if (k == '\x1b') {
             editorSetStatusMessage("");
+            if (callback) { callback(buf, k); }
             free(buf);
             return NULL;
         }  else if (k == '\r') {
             if (buflen != 0) {
                 editorSetStatusMessage("");
+                if (callback) { callback(buf, k); }
                 return buf;
             }
         } else if (!iscntrl(k) && k < 128) {
@@ -660,6 +710,8 @@ void *editorPrompt(char *prompt) {
             buf[buflen++] = k;
             buf[buflen] = '\0';
         }
+
+        if (callback) { callback(buf, k); }
     }
 }
 
@@ -712,9 +764,9 @@ void editorProcessKey() {
         case '\r': // Enter key
             editorInsertNewLine();
             break;
-        case CTRL_KEY('q'): // Exits the editor
+        case CTRL_KEY('x'): // Exits the editor
             if (EC.dirty && quit_times > 0) {
-                editorSetStatusMessage("[WARNING] File has unsaved changes! Press Ctrl-Q again to exit", quit_times);
+                editorSetStatusMessage("[WARNING] File has unsaved changes! Press ^X again to exit", quit_times);
                 quit_times--;
                 return;
             }
@@ -736,6 +788,9 @@ void editorProcessKey() {
             if (EC.ypos < EC.numrows) {
                 EC.xpos = EC.row[EC.ypos].size;
             }
+            break;
+        case CTRL_KEY('q'):
+            editorSearch();
             break;
         case BACKSPACE:
         case CTRL_KEY('h'):
@@ -812,7 +867,7 @@ int main(int argc, char *argv[]) {
         editorOpen(argv[1]);
     }
 
-    editorSetStatusMessage("HELP: Ctrl-Q = Quit | Ctrl-S = Save | v%s", VERSION);
+    editorSetStatusMessage("HELP: ^X = Exit | ^S = Save | ^Q = Query | v%s", VERSION);
 
     // Main editor loop
     while (1) {
