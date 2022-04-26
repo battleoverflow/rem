@@ -39,7 +39,8 @@ chmod +x rem.sh
 
 ## Example
 ```bash
-# Creates a file called file.py. You can also open existing files the same way!
+# Creates a file called file.py
+# You can open existing files the same way!
 ./rem file.py
 ```
 
