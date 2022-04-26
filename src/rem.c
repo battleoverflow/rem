@@ -1,7 +1,7 @@
 /***************************************************/
 /*  File: rem.c                                    */
 /*  Author: Hifumi1337                             */
-/*  Version: 0.0.28                                */
+/*  Version: 0.0.29                                */
 /*  Project: https://github.com/Hifumi1337/rem     */
 /***************************************************/
 
@@ -23,7 +23,7 @@
 #include <unistd.h>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
-#define VERSION "0.0.28"
+#define VERSION "0.0.29"
 #define TAB_STOP 4
 #define QUIT_TIMES 1
 
@@ -439,7 +439,7 @@ void editorOpen(char *filename) {
 void editorSave() {
     // Checks if the file is a new file. Prompts for a new filename.
     if (EC.filename == NULL) {
-        EC.filename = editorPrompt("Save file as (ESC to cancel): %s"), NULL;
+        EC.filename = editorPrompt("Save file as (ESC to cancel): %s", NULL);
 
         if (EC.filename == NULL) {
             editorSetStatusMessage("Save aborted");
@@ -473,17 +473,43 @@ void editorSave() {
 
 // Incremental search function
 void editorSearchCallback(char *query, int key) {
-    if (key == '\r' || key == '\x1b') { return; }
+    static int last_match = -1;
+    static int direction = 1;
 
+    if (key == '\r' || key == '\x1b') {
+        last_match = -1;
+        direction = 1;
+        return;
+    } else if (key == ARROW_RIGHT || key == ARROW_DOWN) {
+        direction = 1;
+    } else if (key == ARROW_LEFT || key == ARROW_UP) {
+        direction = -1;
+    } else {
+        last_match = -1;
+        direction = 1;
+    }
+
+    if (last_match == -1) { direction = 1; }
+    
+    int current_pos = last_match;
     int q;
 
     for (q = 0; q < EC.numrows; q++) {
-        erow *row = &EC.row[q];
+        current_pos += direction;
+
+        if (current_pos == -1) {
+            current_pos = EC.numrows - 1;
+        } else if (current_pos == EC.numrows) {
+            current_pos = 0;
+        }
+
+        erow *row = &EC.row[current_pos];
 
         char *match = strstr(row->render, query);
 
         if (match) {
-            EC.ypos = q;
+            last_match = current_pos;
+            EC.ypos = current_pos;
             EC.xpos = editorRowRxToXpos(row, match - row->render);
             EC.xpos = match - row->render;
             EC.rowoff = EC.numrows;
@@ -494,10 +520,21 @@ void editorSearchCallback(char *query, int key) {
 
 // Searches each row for query
 void editorSearch() {
-    char *query = editorPrompt("Query (ESC to cancel): %s", editorSearchCallback);
+    int s_xpos = EC.xpos; // Saves x position
+    int s_ypos = EC.ypos; // Saves y position
+    int s_coloff = EC.coloff; // Saves column position
+    int s_rowoff = EC.rowoff; // Saves row position
+
+    char *query = editorPrompt("Query (ESC to cancel): %s (Search using Arrows/Enter)", editorSearchCallback);
 
     if (query) {
         free(query);
+    } else {
+        // Returns user to their original mouse position after search
+        EC.xpos = s_xpos;
+        EC.ypos = s_ypos;
+        EC.coloff = s_coloff;
+        EC.rowoff = s_rowoff;
     }
 }
 
@@ -673,7 +710,7 @@ void editorSetStatusMessage(const char *fmt, ...) {
 }
 
 // Prompt for status bar (saving files)
-void *editorPrompt(char *prompt, void (*callback)(char *, int)) {
+char *editorPrompt(char *prompt, void (*callback)(char *, int)) {
     size_t bufsize = 128;
     char *buf = malloc(bufsize);
 
