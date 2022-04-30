@@ -1,7 +1,7 @@
 /***************************************************/
 /*  File: rem.c                                    */
 /*  Author: Hifumi1337                             */
-/*  Version: 0.0.29                                */
+/*  Version: 0.0.31                                */
 /*  Project: https://github.com/Hifumi1337/rem     */
 /***************************************************/
 
@@ -23,9 +23,10 @@
 #include <unistd.h>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
-#define VERSION "0.0.29"
+#define VERSION "0.0.31"
 #define TAB_STOP 4
 #define QUIT_TIMES 1
+#define DEFAULT_MSG "^X: Exit | ^S: Save | ^Q: Query"
 
 enum editorKey {
     BACKSPACE = 127,
@@ -442,7 +443,7 @@ void editorSave() {
         EC.filename = editorPrompt("Save file as (ESC to cancel): %s", NULL);
 
         if (EC.filename == NULL) {
-            editorSetStatusMessage("Save aborted");
+            editorSetStatusMessage("%s | Status: Save Aborted | v%s", DEFAULT_MSG, VERSION);
             return;
         }
     }
@@ -460,7 +461,7 @@ void editorSave() {
                 close(fo);
                 free(buf); // Frees memory
                 EC.dirty = 0;
-                editorSetStatusMessage("%d bytes written to disk", len); // Displays number of bytes written to disk
+                editorSetStatusMessage("%s | Status: %d bytes written to disk | v%s", DEFAULT_MSG, len, VERSION); // Displays number of bytes written to disk
                 return;
             }
         }
@@ -468,7 +469,7 @@ void editorSave() {
     }
 
     free(buf); // Frees memory
-    editorSetStatusMessage("[ERROR] Unable to save file: %s", strerror(errno)); // Notifies of an error is unable to save file
+    editorSetStatusMessage("%s | Status: Unable to save file: %s | v%s", DEFAULT_MSG, strerror(errno), VERSION); // Notifies of an error is unable to save file
 }
 
 // Incremental search function
@@ -623,12 +624,22 @@ void editorDrawRows(struct abuf *ab) {
             if (col_len > EC.screencols) {
                 col_len = EC.screencols;
             }
-            
-            aAppend(ab, &EC.row[filerow].render[EC.coloff], col_len);
+
+            char *c = &EC.row[filerow].render[EC.coloff];
+            int j;
+
+            for (j = 0; j < col_len; j++) {
+                if (isdigit(c[j])) {
+                    aAppend(ab, "\x1b[31m", 5);
+                    aAppend(ab, &c[j], 1);
+                    aAppend(ab, "\x1b[39m", 5);
+                } else {
+                    aAppend(ab, &c[j], 1);
+                }
+            }
         }
 
         aAppend(ab, "\x1b[K", 3);
-
         aAppend(ab, "\r\n", 2);
     }
 }
@@ -727,8 +738,9 @@ char *editorPrompt(char *prompt, void (*callback)(char *, int)) {
             if (buflen != 0) {
                 buf[--buflen] = '\0';
             }
-        } else if (k == '\x1b') {
-            editorSetStatusMessage("");
+        } else if (k == '\x1b') { // ESC key
+            // editorSetStatusMessage("");
+            editorSetStatusMessage("%s | v%s", DEFAULT_MSG, VERSION);
             if (callback) { callback(buf, k); }
             free(buf);
             return NULL;
@@ -815,7 +827,7 @@ void editorProcessKey() {
         case CTRL_KEY('s'): // Saves the file
             editorSave();
             if (EC.filename != NULL) {
-                editorSetStatusMessage("[SUCCESS] File successfully saved!"); // Displays message only if a file is open + saved
+                editorSetStatusMessage("%s | Status: File saved! | v%s", DEFAULT_MSG, VERSION); // Displays message only if a file is open + saved
             }
             break;
         case HOME_KEY:
@@ -828,6 +840,11 @@ void editorProcessKey() {
             break;
         case CTRL_KEY('q'):
             editorSearch();
+
+            if ('\r') {
+                editorSetStatusMessage("%s | Status: Search Aborted | v%s", DEFAULT_MSG, VERSION); // Displays message only if a file is open + saved
+            }
+
             break;
         case BACKSPACE:
         case CTRL_KEY('h'):
@@ -897,19 +914,36 @@ void initEditor() {
 
 /* ⚡ ᕙ(`▿´)ᕗ ⚡ */
 int main(int argc, char *argv[]) {
-    enableRawMode();
-    initEditor();
 
-    if (argc >= 2) {
-        editorOpen(argv[1]);
-    }
+    // Why is comparing an argument to a string so annoying?
+    if (argc >= 3) {
+        printf("Creator: Hifumi1337\n");
+        printf("GitHub: https://github.com/Hifumi1337\n");
+        printf("Version: %s\n\n", VERSION);
 
-    editorSetStatusMessage("HELP: ^X = Exit | ^S = Save | ^Q = Query | v%s", VERSION);
+        printf("01010010 01100101 01101101\n\n");
 
-    // Main editor loop
-    while (1) {
-        editorRefreshScreen();
-        editorProcessKey();
+        printf("Rem is a terminal code editor created as an alternative to Vim or Nano (+ the many other terminal editors)\n\n");
+        
+        printf("Simple Command Overview:\n");
+        printf("Ctrl+X => Exit the terminal editor\n");
+        printf("Ctrl+Q => Search the contents of the open file\n");
+        printf("Ctrl+S => Save the contents of the file to disk\n\n");
+    } else {
+        enableRawMode();
+        initEditor();
+
+        if (argc >= 2) {
+            editorOpen(argv[1]);
+        }
+
+        editorSetStatusMessage("%s | v%s", DEFAULT_MSG, VERSION);
+
+        // Main editor loop
+        while (1) {
+            editorRefreshScreen();
+            editorProcessKey();
+        }
     }
     
     return 0;

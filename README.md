@@ -16,31 +16,19 @@ Ctrl-Q (^Q) | Search (Query) for specific characters or strings
 Ctrl-S (^S) | Save file contents
 ```
 
-If you don't want to get your hands dirty with a bunch of commands, there's an installation script called `install.sh`:
+Help Menu:
 ```bash
-# Only required if the file doesn't have executable permissions
-chmod +x install.sh
-
-./install.sh
+./rem help me
 ```
 
-Once the project is compiled, run the following command to set an alias on your local system:
+Once the project is compiled, run the following command to set an alias or env variable on your local system:
 ```bash
-# Example if using the build script
 alias rem="/opt/rem/rem"
-```
-or you can just run `rem.sh` to run the editor, if you don't want to go through the trouble of setting up a new alias or variable.
-```bash
-# Only required if the file doesn't have executable permissions
-chmod +x rem.sh
-
-./rem.sh
 ```
 
 ## Example
 ```bash
-# Creates a file called file.py
-# You can open existing files the same way!
+# You can open existing files by using:
 ./rem file.py
 ```
 
