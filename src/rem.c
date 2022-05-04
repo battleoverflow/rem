@@ -1,7 +1,7 @@
 /***************************************************/
 /*  File: rem.c                                    */
 /*  Author: Hifumi1337                             */
-/*  Version: 0.0.31                                */
+/*  Version: 0.1.34                                */
 /*  Project: https://github.com/Hifumi1337/rem     */
 /***************************************************/
 
@@ -22,17 +22,11 @@
 #include <time.h>
 #include <unistd.h>
 
-// Custom header files
-#include "utils/syntax.h"
-
 #define CTRL_KEY(k) ((k) & 0x1f)
-#define VERSION "0.1.33"
+#define VERSION "0.1.34"
 #define TAB_STOP 4
 #define QUIT_TIMES 1
 #define DEFAULT_MSG "^X: Exit | ^S: Save | ^Q: Query"
-#define HL_NUMBERS (1<<0)
-#define HL_STRINGS (1<<1)
-#define SYNTAXDB_ENTRIES (sizeof(SyntaxDB) / sizeof(SyntaxDB[0]))
 
 enum editorKey {
     BACKSPACE = 127,
@@ -47,12 +41,39 @@ enum editorKey {
     PAGE_DOWN,
 };
 
+// Syntax highlighting
+enum editorSyntaxHl {
+    SYNTAX_HL_DEFAULT = 0,
+    SYNTAX_HL_COMMENT,
+    SYNTAX_HL_MULTI_COMMENT,
+    SYNTAX_HL_KEYWORD1,
+    SYNTAX_HL_KEYWORD2,
+    SYNTAX_HL_STR,
+    SYNTAX_HL_NUM,
+    SYNTAX_HL_QUERY
+};
+
+#define HL_NUMBERS (1<<0)
+#define HL_STRINGS (1<<1)
+
+struct editorSyntax {
+    char *filetype;
+    char **filematch;
+    char **keywords;
+    char *singleline_comment_s;
+    char *multiline_comment_s;
+    char *multiline_comment_e;
+    int flags;
+};
+
 typedef struct erow {
+    int idx;
     int size;
     int rsize;
     char *chars;
     char *render;
     unsigned char *syntax_hl;
+    int multi_syntax_hl;
 } erow;
 
 struct editorConfig {
@@ -73,6 +94,32 @@ struct editorConfig {
 };
 
 struct editorConfig EC;
+
+// C
+char *syntax_hl_extensions_c[] = {
+    ".c",
+    ".h",
+    ".cpp",
+    NULL
+};
+
+char *syntax_hl_keywords_c[] = {
+    "switch", "if", "while", "for", "break", "continue", "return", "else", "struct", "union", "typedef", "static", "enum", "class", "case", "else if", "include", "define", "=", "printf",
+
+    "int|", "long|", "double|", "float|", "char|", "unsigned|", "signed|", "void|", NULL
+};
+
+struct editorSyntax SyntaxDB[] = {
+    {
+        "c",
+        syntax_hl_extensions_c,
+        syntax_hl_keywords_c,
+        "//", "/*", "*/",
+        HL_NUMBERS | HL_STRINGS
+    },
+};
+
+#define SYNTAXDB_ENTRIES (sizeof(SyntaxDB) / sizeof(SyntaxDB[0]))
 
 void editorSetStatusMessage(const char *fmt, ...);
 void editorRefreshScreen();
@@ -233,30 +280,61 @@ void editorUpdateSyntax(erow *row) {
     char **keywords = EC.syntax->keywords;
 
     char *scs = EC.syntax->singleline_comment_s;
+    char *mcs = EC.syntax->multiline_comment_s;
+    char *mce = EC.syntax->multiline_comment_e;
+
     int scs_len = scs ? strlen(scs) : 0;
+    int mcs_len = mcs ? strlen(mcs) : 0;
+    int mce_len = mce ? strlen(mce) : 0;
 
     int prev_seperator = 1;
     int in_str = 0;
-    int s = 0;
+    int in_comment = (row->idx > 0 && EC.row[row->idx - 1].multi_syntax_hl);
+    
+    int i = 0;
 
-    while (s < row->rsize) {
-        char c = row->render[s];
-        unsigned char prev_syntax_hl = (s > 0) ? row->syntax_hl[s - 1] : SYNTAX_HL_DEFAULT;
+    while (i < row->rsize) {
+        char c = row->render[i];
+        unsigned char prev_syntax_hl = (i > 0) ? row->syntax_hl[i - 1] : SYNTAX_HL_DEFAULT;
 
-        if (scs_len && !in_str) {
-            if (!strncmp(&row->render[s], scs, scs_len)) {
-                memset(&row->syntax_hl[s], SYNTAX_HL_COMMENT, row->rsize - s);
+        if (scs_len && !in_str && !in_comment) {
+            if (!strncmp(&row->render[i], scs, scs_len)) {
+                memset(&row->syntax_hl[i], SYNTAX_HL_COMMENT, row->rsize - i);
                 break;
+            }
+        }
+
+        if (mcs_len && mce_len && !in_str) {
+            if (in_comment) {
+                row->syntax_hl[i] = SYNTAX_HL_MULTI_COMMENT;
+
+                if (!strncmp(&row->render[i], mce, mce_len)) {
+                    memset(&row->syntax_hl[i], SYNTAX_HL_MULTI_COMMENT, mce_len);
+
+                    i += mce_len;
+                    in_comment = 0;
+                    prev_seperator = 1;
+                    continue;
+                } else {
+                    i++;
+                    continue;
+                }
+            } else if (!strncmp(&row->render[i], mcs, mcs_len)) {
+                memset(&row->syntax_hl[i], SYNTAX_HL_MULTI_COMMENT, mcs_len);
+
+                i += mcs_len;
+                in_comment = 1;
+                continue;
             }
         }
 
         if (EC.syntax->flags & HL_STRINGS) {
             if (in_str) {
-                row->syntax_hl[s] = SYNTAX_HL_STR;
+                row->syntax_hl[i] = SYNTAX_HL_STR;
 
-                if (c == '\\' && s + 1 < row->rsize) {
-                    row->syntax_hl[s + 1] = SYNTAX_HL_STR;
-                    s += 2;
+                if (c == '\\' && i + 1 < row->rsize) {
+                    row->syntax_hl[i + 1] = SYNTAX_HL_STR;
+                    i += 2;
                     continue;
                 }
 
@@ -264,14 +342,14 @@ void editorUpdateSyntax(erow *row) {
                     in_str = 0;
                 }
 
-                s++;
+                i++;
                 prev_seperator = 1;
                 continue;
             } else {
                 if (c == '"' || c == '\'') {
                     in_str = c;
-                    row->syntax_hl[s] = SYNTAX_HL_STR;
-                    s++;
+                    row->syntax_hl[i] = SYNTAX_HL_STR;
+                    i++;
                     continue;
                 }
             }
@@ -279,8 +357,8 @@ void editorUpdateSyntax(erow *row) {
 
         if (EC.syntax->flags & HL_NUMBERS) {
             if ((isdigit(c) && (prev_seperator || prev_syntax_hl == SYNTAX_HL_NUM)) || (c == '.' && prev_syntax_hl == SYNTAX_HL_NUM)) {
-                row->syntax_hl[s] = SYNTAX_HL_NUM;
-                s++;
+                row->syntax_hl[i] = SYNTAX_HL_NUM;
+                i++;
                 prev_seperator = 0;
                 continue;
             }
@@ -295,9 +373,9 @@ void editorUpdateSyntax(erow *row) {
 
                 if (kw2) { key_len--; }
 
-                if (!strncmp(&row->render[s], keywords[k], key_len) && is_seperator(row->render[s + key_len])) {
-                    memset(&row->syntax_hl[s], kw2 ? SYNTAX_HL_KEYWORD2 : SYNTAX_HL_KEYWORD1, key_len);
-                    s += key_len;
+                if (!strncmp(&row->render[i], keywords[k], key_len) && is_seperator(row->render[i + key_len])) {
+                    memset(&row->syntax_hl[i], kw2 ? SYNTAX_HL_KEYWORD2 : SYNTAX_HL_KEYWORD1, key_len);
+                    i += key_len;
                     break;
                 }
             }
@@ -309,7 +387,14 @@ void editorUpdateSyntax(erow *row) {
         }
 
         prev_seperator = is_seperator(c);
-        s++;
+        i++;
+    }
+
+    int data_updated = (row->multi_syntax_hl != in_comment);
+    row->multi_syntax_hl = in_comment;
+
+    if (data_updated && row->idx + 1 < EC.numrows) {
+        editorUpdateSyntax(&EC.row[row->idx + 1]);
     }
 }
 
@@ -317,6 +402,7 @@ void editorUpdateSyntax(erow *row) {
 int editorSyntaxToColor(int syntax_hl) {
     switch (syntax_hl) {
         case SYNTAX_HL_COMMENT:
+        case SYNTAX_HL_MULTI_COMMENT:
             return 36; // Cyan
         case SYNTAX_HL_KEYWORD1:
             return 35; // Purple
@@ -435,6 +521,11 @@ void editorInsertRow(int at, char *s, size_t len) {
     EC.row = realloc(EC.row, sizeof(erow) * (EC.numrows + 1));
     memmove(&EC.row[at + 1], &EC.row[at], sizeof(erow) * (EC.numrows - at));
 
+    for (int a = at + 1; a <= EC.numrows; a++) {
+        EC.row[a].idx++;
+    }
+    
+    EC.row[at].idx = at;
     EC.row[at].size = len;
     EC.row[at].chars = malloc(len + 1);
     
@@ -444,6 +535,7 @@ void editorInsertRow(int at, char *s, size_t len) {
     EC.row[at].rsize = 0;
     EC.row[at].render = NULL;
     EC.row[at].syntax_hl = NULL;
+    EC.row[at].multi_syntax_hl = 0;
 
     editorUpdateRow(&EC.row[at]);
 
@@ -462,6 +554,11 @@ void editorDelRow(int at) {
 
     editorFreeRow(&EC.row[at]);
     memmove(&EC.row[at], &EC.row[at + 1], sizeof(erow) * (EC.numrows - at - 1));
+
+    for (int a = at; a < EC.numrows - 1; a++) {
+        EC.row[a].idx--;
+    }
+
     EC.numrows--;
     EC.dirty++;
 }
@@ -834,8 +931,8 @@ void editorDrawRows(struct abuf *ab) {
                         current_color = syntax_color;
 
                         char buf[16];
-                        int syn_len = snprintf(buf, sizeof(buf), "\x1b[%dm", syntax_color);
-                        aAppend(ab, buf, syn_len);
+                        int c_len = snprintf(buf, sizeof(buf), "\x1b[%dm", syntax_color);
+                        aAppend(ab, buf, c_len);
                     }
 
                     aAppend(ab, &c[j], 1);
