@@ -1,10 +1,17 @@
-# Rem (Really Epic & Makeable) 
+# Rem (Terminal Code Editor)
 
-Rem is a terminal code editor I created as an alternative to Vim or Nano (or the many other terminal editors). I will eventually add more features and improve the codebase, but for now, it works pretty well.
+## ⚡ ᕙ(`▿´)ᕗ ⚡
+
+Rem is a terminal code editor for personal use that does most things terminal editors do, but it's a very basic implementation, so there's not too much bloat
+
+## Features
+- Save the contents of any file
+- Syntax highlighting for select languages
+- Notifies you if a file is writeable or not
+- Allows for querying (searching) file contents
 
 ## Usage
-
-How to create an executable:
+How to create an executable (if building from source):
 ```bash
 make
 ```
@@ -16,22 +23,22 @@ Ctrl-Q (^Q) | Search (Query) for specific characters or strings
 Ctrl-S (^S) | Save file contents
 ```
 
-Help Menu:
+You can check the help menu multiple ways. Pick your favorite!
 ```bash
-./rem help me
+./rem help
+./rem -h
+./rem --help
 ```
 
-Once the project is compiled, run the following command to set an alias or env variable on your local system:
+## Example(s)
+
+Open existing files:
 ```bash
-alias rem="/opt/rem/rem"
+./rem file.c
 ```
 
-## Example
+Create a new file (remember to save):
+## Example(s)
 ```bash
-# You can open existing files by using:
-./rem file.py
+./rem
 ```
-
-### Mini FAQ
-> Q. Will there be any actual releases for this project or a project website?
->> A. Yes! I have a domain ready for the website, but need to build it. As for the release, a "real" release will be created once I am happy with the project.

@@ -1,7 +1,7 @@
 /***************************************************/
 /*  File: rem.c                                    */
 /*  Author: Hifumi1337                             */
-/*  Version: 0.1.34                                */
+/*  Version: 0.2.35                                */
 /*  Project: https://github.com/Hifumi1337/rem     */
 /***************************************************/
 
@@ -23,7 +23,7 @@
 #include <unistd.h>
 
 #define CTRL_KEY(k) ((k) & 0x1f)
-#define VERSION "0.1.34"
+#define VERSION "0.2.35"
 #define TAB_STOP 4
 #define QUIT_TIMES 1
 #define DEFAULT_MSG "^X: Exit | ^S: Save | ^Q: Query"
@@ -1129,9 +1129,16 @@ void editorProcessKey() {
             break;
         case CTRL_KEY('s'): // Saves the file
             editorSave();
-            if (EC.filename != NULL) {
-                editorSetStatusMessage("%s | Status: File saved! | v%s", DEFAULT_MSG, VERSION); // Displays message only if a file is open + saved
+            
+            int is_writable;
+            is_writable = access(EC.filename, W_OK);
+
+            if (EC.filename != NULL && is_writable == 0) {
+                editorSetStatusMessage("%s | Status: File saved | v%s", DEFAULT_MSG, VERSION); // Displays message only if a file is open + saved
+            } else {
+                editorSetStatusMessage("%s | Status: File is not writable | v%s", DEFAULT_MSG, VERSION);
             }
+            
             break;
         case HOME_KEY:
             EC.xpos = 0;
@@ -1219,35 +1226,44 @@ void initEditor() {
 /* ⚡ ᕙ(`▿´)ᕗ ⚡ */
 int main(int argc, char *argv[]) {
 
-    // Why is comparing an argument to a string so annoying?
-    if (argc >= 3) {
-        printf("Creator: Hifumi1337\n");
-        printf("GitHub: https://github.com/Hifumi1337\n");
-        printf("Version: %s\n\n", VERSION);
+    int is_writable;
 
-        printf("01010010 01100101 01101101\n\n");
+    if (argc == 2) {
+        if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "help")) {
+            printf("Creator: Hifumi1337 (https://github.com/Hifumi1337)\n");
+            printf("Version: %s\n\n", VERSION);
 
-        printf("Rem is a terminal code editor created as an alternative to Vim or Nano (+ the many other terminal editors)\n\n");
-        
-        printf("Simple Command Overview:\n");
-        printf("Ctrl+X => Exit the terminal editor\n");
-        printf("Ctrl+Q => Search the contents of the open file\n");
-        printf("Ctrl+S => Save the contents of the file to disk\n\n");
-    } else {
-        enableRawMode();
-        initEditor();
+            printf("01010010 01100101 01101101\n\n");
 
-        if (argc >= 2) {
-            editorOpen(argv[1]);
+            printf("Rem is a terminal code editor for personal use that does most things terminal editors do, but it's a very basic implementation, so there's not too much bloat\n\n");
+            
+            printf("Simple Command(s) Overview:\n");
+            printf("Ctrl+X => Exit the terminal editor\n");
+            printf("Ctrl+Q => Search the contents of the open file\n");
+            printf("Ctrl+S => Save the contents of the file to disk\n\n");
+            exit(0);
         }
+    }
+    
+    enableRawMode();
+    initEditor();
 
+    if (argc >= 2) {
+        editorOpen(argv[1]);
+    }
+
+    is_writable = access(EC.filename, W_OK); // Checks if file is writable
+
+    if (is_writable == 0) {
         editorSetStatusMessage("%s | v%s", DEFAULT_MSG, VERSION);
+    } else {
+        editorSetStatusMessage("%s | v%s - %s is not writable", DEFAULT_MSG, VERSION, EC.filename);
+    }
 
-        // Main editor loop
-        while (1) {
-            editorRefreshScreen();
-            editorProcessKey();
-        }
+    // Main editor loop
+    while (1) {
+        editorRefreshScreen();
+        editorProcessKey();
     }
     
     return 0;
