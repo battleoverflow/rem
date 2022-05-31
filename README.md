@@ -2,7 +2,7 @@
 
 ## ⚡ ᕙ(`▿´)ᕗ ⚡
 
-Rem is a terminal code editor for personal use that does most things terminal editors do, but it's a very basic implementation, so there's not too much bloat
+Rem is a terminal code editor for personal use that does most things terminal editors do, but it's a very basic implementation
 
 ## Features
 - Save the contents of any file
@@ -38,7 +38,6 @@ Open existing files:
 ```
 
 Create a new file (remember to save):
-## Example(s)
 ```bash
 ./rem
 ```
