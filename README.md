@@ -30,6 +30,12 @@ You can check the help menu multiple ways. Pick your favorite!
 ./rem --help
 ```
 
+You can also check what version of Rem you're running:
+```bash
+./rem -v
+./rem --version
+```
+
 ## Example(s)
 
 Open existing files:
