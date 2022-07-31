@@ -58,4 +58,4 @@ dkms.conf
 .vscode
 
 # Builds
-builds/rem
+builds/
