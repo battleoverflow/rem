@@ -1,7 +1,7 @@
 /***************************************************/
 /*  File: rem.c                                    */
 /*  Author: Hifumi1337                             */
-/*  Version: 0.2.35                                */
+/*  Version: 1.2.37                                */
 /*  Project: https://github.com/Hifumi1337/rem     */
 /***************************************************/
 
@@ -22,49 +22,14 @@
 #include <time.h>
 #include <unistd.h>
 
+#include "utils/syntax_hl.h"
+#include "utils/bindings.h"
+
 #define CTRL_KEY(k) ((k) & 0x1f)
-#define VERSION "0.2.35"
+#define VERSION "1.2.37"
 #define TAB_STOP 4
 #define QUIT_TIMES 1
 #define DEFAULT_MSG "^X: Exit | ^S: Save | ^Q: Query"
-
-enum editorKey {
-    BACKSPACE = 127,
-    ARROW_LEFT = 1000,
-    ARROW_RIGHT,
-    ARROW_UP,
-    ARROW_DOWN,
-    DEL_KEY,
-    HOME_KEY,
-    END_KEY,
-    PAGE_UP,
-    PAGE_DOWN,
-};
-
-// Syntax highlighting
-enum editorSyntaxHl {
-    SYNTAX_HL_DEFAULT = 0,
-    SYNTAX_HL_COMMENT,
-    SYNTAX_HL_MULTI_COMMENT,
-    SYNTAX_HL_KEYWORD1,
-    SYNTAX_HL_KEYWORD2,
-    SYNTAX_HL_STR,
-    SYNTAX_HL_NUM,
-    SYNTAX_HL_QUERY
-};
-
-#define HL_NUMBERS (1<<0)
-#define HL_STRINGS (1<<1)
-
-struct editorSyntax {
-    char *filetype;
-    char **filematch;
-    char **keywords;
-    char *singleline_comment_s;
-    char *multiline_comment_s;
-    char *multiline_comment_e;
-    int flags;
-};
 
 typedef struct erow {
     int idx;
@@ -94,32 +59,6 @@ struct editorConfig {
 };
 
 struct editorConfig EC;
-
-// C
-char *syntax_hl_extensions_c[] = {
-    ".c",
-    ".h",
-    ".cpp",
-    NULL
-};
-
-char *syntax_hl_keywords_c[] = {
-    "switch", "if", "while", "for", "break", "continue", "return", "else", "struct", "union", "typedef", "static", "enum", "class", "case", "else if", "include", "define", "=", "printf",
-
-    "int|", "long|", "double|", "float|", "char|", "unsigned|", "signed|", "void|", NULL
-};
-
-struct editorSyntax SyntaxDB[] = {
-    {
-        "c",
-        syntax_hl_extensions_c,
-        syntax_hl_keywords_c,
-        "//", "/*", "*/",
-        HL_NUMBERS | HL_STRINGS
-    },
-};
-
-#define SYNTAXDB_ENTRIES (sizeof(SyntaxDB) / sizeof(SyntaxDB[0]))
 
 void editorSetStatusMessage(const char *fmt, ...);
 void editorRefreshScreen();
@@ -369,12 +308,21 @@ void editorUpdateSyntax(erow *row) {
 
             for (k = 0; keywords[k]; k++) {
                 int key_len = strlen(keywords[k]);
-                int kw2 = keywords[k][key_len - 1] == '|';
+                
+                // Add new lines for extra keywords
+                int kw2 = keywords[k][key_len - 1] == '2';
+                // int kw3 = keywords[k][key_len - 1] == '3';
 
+                // Add new lines for extra keywords
                 if (kw2) { key_len--; }
+                // if (kw3) { key_len--; }
 
                 if (!strncmp(&row->render[i], keywords[k], key_len) && is_seperator(row->render[i + key_len])) {
+                    
+                    // Add new lines for extra keywords
                     memset(&row->syntax_hl[i], kw2 ? SYNTAX_HL_KEYWORD2 : SYNTAX_HL_KEYWORD1, key_len);
+                    // memset(&row->syntax_hl[i], kw3 ? SYNTAX_HL_KEYWORD3 : SYNTAX_HL_KEYWORD1, key_len);
+                    
                     i += key_len;
                     break;
                 }
@@ -395,27 +343,6 @@ void editorUpdateSyntax(erow *row) {
 
     if (data_updated && row->idx + 1 < EC.numrows) {
         editorUpdateSyntax(&EC.row[row->idx + 1]);
-    }
-}
-
-// Color schema
-int editorSyntaxToColor(int syntax_hl) {
-    switch (syntax_hl) {
-        case SYNTAX_HL_COMMENT:
-        case SYNTAX_HL_MULTI_COMMENT:
-            return 36; // Cyan
-        case SYNTAX_HL_KEYWORD1:
-            return 35; // Purple
-        case SYNTAX_HL_KEYWORD2:
-            return 31; // Red
-        case SYNTAX_HL_STR:
-            return 33; // Purple
-        case SYNTAX_HL_NUM:
-            return 31; // Red
-        case SYNTAX_HL_QUERY:
-            return 34; // Blue
-        default:
-            return 37; // White
     }
 }
 
@@ -1241,6 +1168,9 @@ int main(int argc, char *argv[]) {
             printf("Ctrl+X => Exit the terminal editor\n");
             printf("Ctrl+Q => Search the contents of the open file\n");
             printf("Ctrl+S => Save the contents of the file to disk\n\n");
+            exit(0);
+        } else if (!strcmp(argv[1], "-v") || !strcmp(argv[1], "--version")) {
+            printf("Rem: v%s\n\n", VERSION);
             exit(0);
         }
     }
