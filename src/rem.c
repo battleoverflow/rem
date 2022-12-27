@@ -1,8 +1,8 @@
 /***************************************************/
 /*  File: rem.c                                    */
-/*  Author: Hifumi1337                             */
+/*  Author: azazelm3dj3d                             */
 /*  Version: 1.2.37                                */
-/*  Project: https://github.com/Hifumi1337/rem     */
+/*  Project: https://github.com/azazelm3dj3d/rem     */
 /***************************************************/
 
 #define _DEFAULT_SOURCE
@@ -1157,7 +1157,7 @@ int main(int argc, char *argv[]) {
 
     if (argc == 2) {
         if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "help")) {
-            printf("Creator: Hifumi1337 (https://github.com/Hifumi1337)\n");
+            printf("Creator: azazelm3dj3d (https://github.com/azazelm3dj3d)\n");
             printf("Version: %s\n\n", VERSION);
 
             printf("01010010 01100101 01101101\n\n");

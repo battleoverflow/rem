@@ -23,7 +23,7 @@ Ctrl-Q (^Q) | Search (Query) for specific characters or strings
 Ctrl-S (^S) | Save file contents
 ```
 
-You can check the help menu multiple ways. Pick your favorite!
+You can check the help menu in multiple ways. Pick your favorite!
 ```bash
 ./rem help
 ./rem -h
