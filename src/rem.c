@@ -1,8 +1,8 @@
 /***************************************************/
 /*  File: rem.c                                    */
-/*  Author: azazelm3dj3d                             */
+/*  Author: battleoverflow                         */
 /*  Version: 1.2.37                                */
-/*  Project: https://github.com/azazelm3dj3d/rem     */
+/*  Project: https://github.com/battleoverflow/rem */
 /***************************************************/
 
 #define _DEFAULT_SOURCE
@@ -1157,7 +1157,7 @@ int main(int argc, char *argv[]) {
 
     if (argc == 2) {
         if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help") || !strcmp(argv[1], "help")) {
-            printf("Creator: azazelm3dj3d (https://github.com/azazelm3dj3d)\n");
+            printf("Creator: battleoverflow (https://github.com/battleoverflow)\n");
             printf("Version: %s\n\n", VERSION);
 
             printf("01010010 01100101 01101101\n\n");
